@@ -39,7 +39,131 @@ VoiceChannelAppClass.prototype.init = function () {
 
 VoiceChannelAppClass.prototype.setupLayout = function () {
     var self = this;
-    $(self.page.body).html(frappe.render_template('voice_channel_ui'));
+    var html = '<div class="voice-channel-page">' +
+        '<aside class="vc-sidebar">' +
+        '<div class="vc-sidebar-header">' +
+        '<h3>📢 Channels</h3>' +
+        '<button class="vc-btn vc-btn-icon" id="create-channel-btn" title="Create Channel">' +
+        '<i class="fa fa-plus"></i>' +
+        '</button>' +
+        '</div>' +
+        '<div class="vc-channel-list" id="channel-list"></div>' +
+        '</aside>' +
+        '<main class="vc-main">' +
+        '<header class="vc-channel-header" id="channel-header">' +
+        '<div class="vc-channel-info">' +
+        '<span class="vc-channel-emoji">📢</span>' +
+        '<h2 class="vc-channel-name">Select a Channel</h2>' +
+        '</div>' +
+        '<div class="vc-channel-actions">' +
+        '<button class="vc-btn vc-btn-icon" id="channel-members-btn" title="View Members">' +
+        '<i class="fa fa-users"></i>' +
+        '</button>' +
+        '</div>' +
+        '</header>' +
+        '<div class="vc-timeline" id="timeline">' +
+        '<div class="vc-empty-state" id="empty-state">' +
+        '<div class="vc-empty-icon">💬</div>' +
+        '<h3>No messages yet</h3>' +
+        '<p>Start a conversation by sending a voice note, text, or creating a todo.</p>' +
+        '</div>' +
+        '</div>' +
+        '<div class="vc-input-area" id="input-area">' +
+        '<div class="vc-voice-recorder" id="voice-recorder">' +
+        '<button class="vc-record-btn" id="record-btn" title="Record Voice Note">' +
+        '<i class="fa fa-microphone"></i>' +
+        '</button>' +
+        '<div class="vc-recording-indicator" id="recording-indicator" style="display: none;">' +
+        '<span class="vc-recording-dot"></span>' +
+        '<span class="vc-recording-time" id="recording-time">00:00</span>' +
+        '<button class="vc-btn vc-btn-danger" id="stop-record-btn">' +
+        '<i class="fa fa-stop"></i> Stop' +
+        '</button>' +
+        '</div>' +
+        '</div>' +
+        '<div class="vc-text-input-container" id="text-input-container" style="display: none;">' +
+        '<textarea class="vc-text-input" id="text-input" placeholder="Type a message..."></textarea>' +
+        '<button class="vc-btn vc-btn-primary" id="send-text-btn">' +
+        '<i class="fa fa-paper-plane"></i>' +
+        '</button>' +
+        '</div>' +
+        '<div class="vc-todo-input-container" id="todo-input-container" style="display: none;">' +
+        '<input type="text" class="vc-todo-title" id="todo-title" placeholder="Todo title...">' +
+        '<input type="date" class="vc-todo-date" id="todo-date">' +
+        '<button class="vc-btn vc-btn-success" id="add-todo-btn">' +
+        '<i class="fa fa-plus"></i> Add' +
+        '</button>' +
+        '</div>' +
+        '<div class="vc-input-toggles">' +
+        '<button class="vc-toggle-btn active" id="toggle-voice" title="Voice Note">' +
+        '<i class="fa fa-microphone"></i>' +
+        '</button>' +
+        '<button class="vc-toggle-btn" id="toggle-text" title="Text Note">' +
+        '<i class="fa fa-comment"></i>' +
+        '</button>' +
+        '<button class="vc-toggle-btn" id="toggle-todo" title="Todo">' +
+        '<i class="fa fa-check-square-o"></i>' +
+        '</button>' +
+        '</div>' +
+        '</div>' +
+        '</main>' +
+        '</div>' +
+        '<div class="vc-modal" id="emoji-modal" style="display: none;">' +
+        '<div class="vc-modal-content">' +
+        '<div class="vc-modal-header">' +
+        '<h4>Select Emoji</h4>' +
+        '<button class="vc-btn vc-btn-icon vc-modal-close">&times;</button>' +
+        '</div>' +
+        '<div class="vc-emoji-grid" id="emoji-grid"></div>' +
+        '</div>' +
+        '</div>' +
+        '<div class="vc-modal" id="create-channel-modal" style="display: none;">' +
+        '<div class="vc-modal-content">' +
+        '<div class="vc-modal-header">' +
+        '<h4>Create Channel</h4>' +
+        '<button class="vc-btn vc-btn-icon vc-modal-close">&times;</button>' +
+        '</div>' +
+        '<div class="vc-modal-body">' +
+        '<div class="vc-form-group">' +
+        '<label>Channel Name *</label>' +
+        '<input type="text" id="new-channel-name" class="vc-input" placeholder="e.g. General">' +
+        '</div>' +
+        '<div class="vc-form-group">' +
+        '<label>Emoji</label>' +
+        '<input type="text" id="new-channel-emoji" class="vc-input" value="📢" maxlength="2">' +
+        '</div>' +
+        '<div class="vc-form-group">' +
+        '<label>Description</label>' +
+        '<textarea id="new-channel-description" class="vc-input" placeholder="What is this channel about?"></textarea>' +
+        '</div>' +
+        '<div class="vc-form-group">' +
+        '<label><input type="checkbox" id="new-channel-private"> Private Channel</label>' +
+        '</div>' +
+        '</div>' +
+        '<div class="vc-modal-footer">' +
+        '<button class="vc-btn" id="cancel-create-channel">Cancel</button>' +
+        '<button class="vc-btn vc-btn-primary" id="submit-create-channel">Create</button>' +
+        '</div>' +
+        '</div>' +
+        '</div>' +
+        '<div class="vc-modal" id="members-modal" style="display: none;">' +
+        '<div class="vc-modal-content">' +
+        '<div class="vc-modal-header">' +
+        '<h4>Channel Members</h4>' +
+        '<button class="vc-btn vc-btn-icon vc-modal-close">&times;</button>' +
+        '</div>' +
+        '<div class="vc-modal-body">' +
+        '<div class="vc-members-list" id="members-list"></div>' +
+        '</div>' +
+        '</div>' +
+        '</div>';
+
+    $(self.page.body).html(html);
+
+    // Apply CSS styles
+    if (!$('#voice-channel-styles').length) {
+        $('head').append('<link id="voice-channel-styles" rel="stylesheet" href="/assets/voice_note/css/voice_channel_page.css">');
+    }
 };
 
 // ========================================
