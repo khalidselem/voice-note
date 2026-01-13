@@ -1,0 +1,778 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Voice Channels{% endblock %}
+
+{% block page_content %}
+<div class="voice-portal">
+    <!-- Header -->
+    <header class="vp-header">
+        <div class="vp-header-content">
+            <h1>🎤 Voice Channels</h1>
+            <p class="vp-subtitle">Record and share voice notes with your team</p>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="vp-container">
+        <!-- Channel Selector -->
+        <div class="vp-channel-selector">
+            <label for="channel-select">Select Channel</label>
+            <select id="channel-select" class="vp-select">
+                <option value="">Loading channels...</option>
+            </select>
+        </div>
+
+        <!-- Recording Section -->
+        <div class="vp-recorder-section" id="recorder-section" style="display: none;">
+            <div class="vp-recorder-card">
+                <h3>🎙️ Record Voice Note</h3>
+
+                <!-- Recorder Button -->
+                <div class="vp-recorder">
+                    <button class="vp-record-btn" id="record-btn">
+                        <i class="fa fa-microphone"></i>
+                    </button>
+                    <p class="vp-record-hint" id="record-hint">Tap to start recording</p>
+                </div>
+
+                <!-- Recording Indicator -->
+                <div class="vp-recording-active" id="recording-active" style="display: none;">
+                    <div class="vp-recording-pulse"></div>
+                    <span class="vp-recording-time" id="recording-time">00:00</span>
+                    <button class="vp-stop-btn" id="stop-btn">
+                        <i class="fa fa-stop"></i> Stop & Send
+                    </button>
+                </div>
+
+                <!-- Upload Status -->
+                <div class="vp-upload-status" id="upload-status" style="display: none;">
+                    <div class="vp-spinner"></div>
+                    <span>Sending voice note...</span>
+                </div>
+            </div>
+
+            <!-- Quick Text Note -->
+            <div class="vp-text-card">
+                <h3>📝 Quick Note</h3>
+                <div class="vp-text-input-wrapper">
+                    <textarea id="text-input" placeholder="Type a quick message..." rows="3"></textarea>
+                    <button class="vp-send-btn" id="send-text-btn">
+                        <i class="fa fa-paper-plane"></i> Send
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="vp-timeline-section" id="timeline-section" style="display: none;">
+            <h3>📋 Recent Messages</h3>
+            <div class="vp-timeline" id="timeline">
+                <!-- Timeline items will be loaded here -->
+            </div>
+            <div class="vp-load-more" id="load-more" style="display: none;">
+                <button class="vp-btn" id="load-more-btn">Load More</button>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="vp-empty" id="empty-state" style="display: none;">
+            <div class="vp-empty-icon">💬</div>
+            <h3>No messages yet</h3>
+            <p>Be the first to send a voice note!</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Voice Portal Styles */
+    :root {
+        --vp-primary: #6366f1;
+        --vp-primary-dark: #4f46e5;
+        --vp-success: #10b981;
+        --vp-danger: #ef4444;
+        --vp-bg: #0f172a;
+        --vp-card: #1e293b;
+        --vp-card-hover: #334155;
+        --vp-text: #f8fafc;
+        --vp-text-muted: #94a3b8;
+        --vp-border: #334155;
+        --vp-voice: #a855f7;
+        --vp-text-color: #3b82f6;
+    }
+
+    .voice-portal {
+        min-height: 100vh;
+        background: linear-gradient(135deg, var(--vp-bg) 0%, #1a1a2e 100%);
+        color: var(--vp-text);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .vp-header {
+        background: rgba(30, 41, 59, 0.9);
+        backdrop-filter: blur(20px);
+        padding: 40px 20px;
+        text-align: center;
+        border-bottom: 1px solid var(--vp-border);
+    }
+
+    .vp-header h1 {
+        margin: 0 0 8px;
+        font-size: 32px;
+        font-weight: 700;
+    }
+
+    .vp-subtitle {
+        margin: 0;
+        color: var(--vp-text-muted);
+        font-size: 16px;
+    }
+
+    .vp-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+
+    /* Channel Selector */
+    .vp-channel-selector {
+        margin-bottom: 24px;
+    }
+
+    .vp-channel-selector label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: var(--vp-text-muted);
+    }
+
+    .vp-select {
+        width: 100%;
+        padding: 14px 16px;
+        background: var(--vp-card);
+        border: 1px solid var(--vp-border);
+        border-radius: 12px;
+        color: var(--vp-text);
+        font-size: 16px;
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%2394a3b8' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 24px;
+    }
+
+    .vp-select:focus {
+        outline: none;
+        border-color: var(--vp-primary);
+    }
+
+    /* Recorder Card */
+    .vp-recorder-card,
+    .vp-text-card {
+        background: var(--vp-card);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 20px;
+        border: 1px solid var(--vp-border);
+    }
+
+    .vp-recorder-card h3,
+    .vp-text-card h3 {
+        margin: 0 0 20px;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    /* Recorder Button */
+    .vp-recorder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .vp-record-btn {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--vp-voice), #9333ea);
+        border: none;
+        color: white;
+        font-size: 36px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 30px rgba(168, 85, 247, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .vp-record-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 12px 40px rgba(168, 85, 247, 0.5);
+    }
+
+    .vp-record-btn:active {
+        transform: scale(0.95);
+    }
+
+    .vp-record-hint {
+        color: var(--vp-text-muted);
+        margin: 0;
+        font-size: 14px;
+    }
+
+    /* Recording Active State */
+    .vp-recording-active {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        padding: 20px;
+    }
+
+    .vp-recording-pulse {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: var(--vp-danger);
+        animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+
+        0%,
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        50% {
+            transform: scale(1.15);
+            opacity: 0.8;
+        }
+    }
+
+    .vp-recording-time {
+        font-size: 32px;
+        font-weight: 700;
+        font-family: 'SF Mono', monospace;
+        color: var(--vp-text);
+    }
+
+    .vp-stop-btn {
+        padding: 14px 32px;
+        background: var(--vp-danger);
+        border: none;
+        border-radius: 30px;
+        color: white;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .vp-stop-btn:hover {
+        background: #dc2626;
+        transform: scale(1.05);
+    }
+
+    /* Upload Status */
+    .vp-upload-status {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 20px;
+        color: var(--vp-text-muted);
+    }
+
+    .vp-spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid var(--vp-border);
+        border-top-color: var(--vp-primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* Text Input */
+    .vp-text-input-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .vp-text-input-wrapper textarea {
+        width: 100%;
+        padding: 14px 16px;
+        background: var(--vp-bg);
+        border: 1px solid var(--vp-border);
+        border-radius: 12px;
+        color: var(--vp-text);
+        font-size: 15px;
+        resize: none;
+        font-family: inherit;
+    }
+
+    .vp-text-input-wrapper textarea:focus {
+        outline: none;
+        border-color: var(--vp-primary);
+    }
+
+    .vp-send-btn {
+        align-self: flex-end;
+        padding: 12px 24px;
+        background: var(--vp-primary);
+        border: none;
+        border-radius: 10px;
+        color: white;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .vp-send-btn:hover {
+        background: var(--vp-primary-dark);
+    }
+
+    /* Timeline */
+    .vp-timeline-section {
+        margin-top: 32px;
+    }
+
+    .vp-timeline-section h3 {
+        margin: 0 0 16px;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .vp-timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .vp-timeline-item {
+        background: var(--vp-card);
+        border-radius: 12px;
+        padding: 16px;
+        border: 1px solid var(--vp-border);
+        animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .vp-timeline-item.voice-note {
+        border-left: 3px solid var(--vp-voice);
+    }
+
+    .vp-timeline-item.text-note {
+        border-left: 3px solid var(--vp-text-color);
+    }
+
+    .vp-item-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .vp-item-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: var(--vp-border);
+    }
+
+    .vp-item-meta {
+        flex: 1;
+    }
+
+    .vp-item-name {
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .vp-item-time {
+        font-size: 12px;
+        color: var(--vp-text-muted);
+    }
+
+    .vp-item-type {
+        font-size: 18px;
+    }
+
+    .vp-item-content {
+        margin-top: 8px;
+    }
+
+    .vp-item-content audio {
+        width: 100%;
+        height: 40px;
+        border-radius: 20px;
+    }
+
+    .vp-item-text {
+        line-height: 1.6;
+        color: var(--vp-text);
+    }
+
+    /* Empty State */
+    .vp-empty {
+        text-align: center;
+        padding: 60px 20px;
+        background: var(--vp-card);
+        border-radius: 16px;
+        margin-top: 24px;
+    }
+
+    .vp-empty-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .vp-empty h3 {
+        margin: 0 0 8px;
+        font-size: 20px;
+        color: var(--vp-text-muted);
+    }
+
+    .vp-empty p {
+        margin: 0;
+        color: var(--vp-text-muted);
+        font-size: 14px;
+    }
+
+    /* Load More */
+    .vp-load-more {
+        text-align: center;
+        margin-top: 16px;
+    }
+
+    .vp-btn {
+        padding: 12px 24px;
+        background: var(--vp-card-hover);
+        border: 1px solid var(--vp-border);
+        border-radius: 10px;
+        color: var(--vp-text);
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .vp-btn:hover {
+        background: var(--vp-border);
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+        .vp-header {
+            padding: 30px 16px;
+        }
+
+        .vp-header h1 {
+            font-size: 24px;
+        }
+
+        .vp-container {
+            padding: 16px;
+        }
+
+        .vp-record-btn {
+            width: 80px;
+            height: 80px;
+            font-size: 28px;
+        }
+    }
+</style>
+
+<script>
+    frappe.ready(function () {
+        const VoicePortal = {
+            currentChannel: null,
+            mediaRecorder: null,
+            audioChunks: [],
+            recordingStartTime: null,
+            recordingTimer: null,
+
+            init() {
+                this.loadChannels();
+                this.bindEvents();
+            },
+
+            async loadChannels() {
+                try {
+                    const response = await frappe.call({
+                        method: 'voice_note.voice_channel.api.voice.get_channels'
+                    });
+
+                    const channels = response.message || [];
+                    const $select = $('#channel-select');
+                    $select.empty();
+
+                    if (channels.length === 0) {
+                        $select.append('<option value="">No channels available</option>');
+                        return;
+                    }
+
+                    $select.append('<option value="">Select a channel...</option>');
+                    channels.forEach(ch => {
+                        $select.append(`<option value="${ch.name}">${ch.emoji || '📢'} ${ch.channel_name}</option>`);
+                    });
+                } catch (error) {
+                    console.error('Error loading channels:', error);
+                }
+            },
+
+            selectChannel(channelName) {
+                this.currentChannel = channelName;
+
+                if (channelName) {
+                    $('#recorder-section').show();
+                    $('#timeline-section').show();
+                    this.loadTimeline();
+                } else {
+                    $('#recorder-section').hide();
+                    $('#timeline-section').hide();
+                }
+            },
+
+            async loadTimeline() {
+                if (!this.currentChannel) return;
+
+                try {
+                    const response = await frappe.call({
+                        method: 'voice_note.voice_channel.api.voice.get_timeline',
+                        args: { channel: this.currentChannel, limit: 20 }
+                    });
+
+                    const items = response.message || [];
+                    this.renderTimeline(items);
+                } catch (error) {
+                    console.error('Error loading timeline:', error);
+                }
+            },
+
+            renderTimeline(items) {
+                const $timeline = $('#timeline');
+                $timeline.empty();
+
+                if (items.length === 0) {
+                    $('#timeline-section').hide();
+                    $('#empty-state').show();
+                    return;
+                }
+
+                $('#empty-state').hide();
+                $('#timeline-section').show();
+
+                items.reverse().forEach(item => {
+                    const avatarUrl = item.owner_image || '/assets/frappe/images/default-avatar.png';
+                    const timeAgo = frappe.datetime.prettyDate(item.creation);
+
+                    let contentHtml = '';
+                    let typeIcon = '';
+                    let typeClass = '';
+
+                    if (item.item_type === 'Voice Note') {
+                        typeIcon = '🎤';
+                        typeClass = 'voice-note';
+                        contentHtml = `<audio controls src="${item.voice_file}"></audio>`;
+                    } else if (item.item_type === 'Text Note') {
+                        typeIcon = '📝';
+                        typeClass = 'text-note';
+                        contentHtml = `<div class="vp-item-text">${item.content || ''}</div>`;
+                    }
+
+                    const $item = $(`
+                    <div class="vp-timeline-item ${typeClass}">
+                        <div class="vp-item-header">
+                            <img src="${avatarUrl}" class="vp-item-avatar" alt="">
+                            <div class="vp-item-meta">
+                                <div class="vp-item-name">${item.owner_name}</div>
+                                <div class="vp-item-time">${timeAgo}</div>
+                            </div>
+                            <span class="vp-item-type">${typeIcon}</span>
+                        </div>
+                        <div class="vp-item-content">${contentHtml}</div>
+                    </div>
+                `);
+
+                    $timeline.append($item);
+                });
+            },
+
+            async startRecording() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                    this.audioChunks = [];
+                    this.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+                    this.mediaRecorder.ondataavailable = (e) => {
+                        if (e.data.size > 0) this.audioChunks.push(e.data);
+                    };
+
+                    this.mediaRecorder.onstop = () => {
+                        stream.getTracks().forEach(track => track.stop());
+                        this.uploadRecording();
+                    };
+
+                    this.mediaRecorder.start();
+                    this.recordingStartTime = Date.now();
+                    this.startTimer();
+
+                    // Update UI
+                    $('#record-btn, #record-hint').hide();
+                    $('#recording-active').show();
+
+                } catch (error) {
+                    console.error('Error starting recording:', error);
+                    frappe.msgprint(__('Could not access microphone. Please allow microphone access.'));
+                }
+            },
+
+            stopRecording() {
+                if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+                    this.mediaRecorder.stop();
+                }
+                this.stopTimer();
+
+                // Update UI
+                $('#recording-active').hide();
+                $('#upload-status').show();
+            },
+
+            startTimer() {
+                this.recordingTimer = setInterval(() => {
+                    const elapsed = Date.now() - this.recordingStartTime;
+                    const seconds = Math.floor(elapsed / 1000);
+                    const mins = Math.floor(seconds / 60);
+                    const secs = seconds % 60;
+                    $('#recording-time').text(`${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
+                }, 100);
+            },
+
+            stopTimer() {
+                if (this.recordingTimer) {
+                    clearInterval(this.recordingTimer);
+                    this.recordingTimer = null;
+                }
+                $('#recording-time').text('00:00');
+            },
+
+            async uploadRecording() {
+                if (this.audioChunks.length === 0) return;
+
+                const blob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                const duration = (Date.now() - this.recordingStartTime) / 1000;
+
+                try {
+                    // Upload file
+                    const formData = new FormData();
+                    formData.append('file', blob, `voice_${Date.now()}.webm`);
+                    formData.append('is_private', '1');
+                    formData.append('doctype', 'Channel Timeline Item');
+
+                    const uploadResponse = await fetch('/api/method/upload_file', {
+                        method: 'POST',
+                        body: formData,
+                        headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token }
+                    });
+
+                    const uploadResult = await uploadResponse.json();
+
+                    if (uploadResult.message && uploadResult.message.file_url) {
+                        await frappe.call({
+                            method: 'voice_note.voice_channel.api.voice.create_voice_note',
+                            args: {
+                                channel: this.currentChannel,
+                                voice_file: uploadResult.message.file_url,
+                                voice_duration: duration
+                            }
+                        });
+
+                        frappe.show_alert({ message: __('Voice note sent! 🎉'), indicator: 'green' });
+                        this.loadTimeline();
+                    }
+                } catch (error) {
+                    console.error('Error uploading:', error);
+                    frappe.msgprint(__('Error sending voice note'));
+                } finally {
+                    // Reset UI
+                    $('#upload-status').hide();
+                    $('#record-btn, #record-hint').show();
+                }
+            },
+
+            async sendTextNote() {
+                const content = $('#text-input').val().trim();
+                if (!content || !this.currentChannel) return;
+
+                try {
+                    await frappe.call({
+                        method: 'voice_note.voice_channel.api.voice.create_text_note',
+                        args: {
+                            channel: this.currentChannel,
+                            content: content
+                        }
+                    });
+
+                    $('#text-input').val('');
+                    frappe.show_alert({ message: __('Message sent!'), indicator: 'green' });
+                    this.loadTimeline();
+                } catch (error) {
+                    console.error('Error sending text:', error);
+                }
+            },
+
+            bindEvents() {
+                const self = this;
+
+                $('#channel-select').on('change', function () {
+                    self.selectChannel($(this).val());
+                });
+
+                $('#record-btn').on('click', () => this.startRecording());
+                $('#stop-btn').on('click', () => this.stopRecording());
+                $('#send-text-btn').on('click', () => this.sendTextNote());
+
+                $('#text-input').on('keydown', function (e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        self.sendTextNote();
+                    }
+                });
+            }
+        };
+
+        VoicePortal.init();
+    });
+</script>
+{% endblock %}
