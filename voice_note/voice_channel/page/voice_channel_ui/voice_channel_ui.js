@@ -297,7 +297,7 @@ VoiceChannelAppClass.prototype.createTimelineItem = function (item) {
     var typeClass = '';
 
     if (item.item_type === 'Voice Note') {
-        typeIcon = '🎤';
+        typeIcon = '<i class="fa fa-microphone"></i>';
         typeClass = 'voice-note';
         contentHtml =
             '<div class="vc-voice-player">' +
@@ -305,11 +305,11 @@ VoiceChannelAppClass.prototype.createTimelineItem = function (item) {
             '<span class="vc-voice-duration">' + self.formatDuration(item.voice_duration) + '</span>' +
             '</div>';
     } else if (item.item_type === 'Text Note') {
-        typeIcon = '📝';
+        typeIcon = '<i class="fa fa-file-text-o"></i>';
         typeClass = 'text-note';
         contentHtml = '<div class="vc-text-content">' + (item.content || '') + '</div>';
     } else if (item.item_type === 'Todo') {
-        typeIcon = '✅';
+        typeIcon = '<i class="fa fa-check-square-o"></i>';
         typeClass = 'todo';
         var completedClass = item.is_completed ? 'completed' : '';
         var checkedAttr = item.is_completed ? 'checked' : '';
