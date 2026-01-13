@@ -1,0 +1,369 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Voice Channels{% endblock %}
+
+{% block page_content %}
+<link rel="stylesheet" href="/assets/voice_note/css/voice_app.css">
+
+<div id="voice-app">
+    <div class="va-container">
+        <!-- Sidebar -->
+        <div class="va-sidebar">
+            <div class="va-sidebar-header">
+                <h3><i class="fa fa-bullhorn"></i> Channels</h3>
+                <button class="va-btn-icon" onclick="VoiceApp.showCreateChannel()">
+                    <i class="fa fa-plus"></i>
+                </button>
+            </div>
+            <div id="channel-list" class="va-channel-list">
+                <div class="va-loading">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Main -->
+        <div class="va-main">
+            <div class="va-header" id="channel-header">
+                <span class="va-channel-icon" id="channel-icon">#</span>
+                <span class="va-channel-title" id="channel-title">Select a Channel</span>
+            </div>
+
+            <div class="va-timeline" id="timeline">
+                <div class="va-empty">
+                    <i class="fa fa-comments fa-3x"></i>
+                    <p>No messages yet</p>
+                </div>
+            </div>
+
+            <div class="va-input-area" id="input-area" style="display:none;">
+                <div class="va-input-tabs">
+                    <button class="va-tab active" data-mode="voice" onclick="VoiceApp.setMode('voice')">
+                        <i class="fa fa-microphone"></i> Voice
+                    </button>
+                    <button class="va-tab" data-mode="text" onclick="VoiceApp.setMode('text')">
+                        <i class="fa fa-comment"></i> Text
+                    </button>
+                    <button class="va-tab" data-mode="todo" onclick="VoiceApp.setMode('todo')">
+                        <i class="fa fa-tasks"></i> Todo
+                    </button>
+                </div>
+
+                <!-- Voice Mode -->
+                <div class="va-mode" id="mode-voice">
+                    <button class="va-record-btn" id="record-btn" onclick="VoiceApp.toggleRecording()">
+                        <i class="fa fa-microphone"></i>
+                    </button>
+                    <div class="va-recording-info" id="recording-info" style="display:none;">
+                        <span class="va-rec-dot"></span>
+                        <span id="rec-time">00:00</span>
+                    </div>
+                </div>
+
+                <!-- Text Mode -->
+                <div class="va-mode" id="mode-text" style="display:none;">
+                    <textarea id="text-input" placeholder="Type your message..."></textarea>
+                    <button class="va-send-btn" onclick="VoiceApp.sendText()">
+                        <i class="fa fa-paper-plane"></i>
+                    </button>
+                </div>
+
+                <!-- Todo Mode -->
+                <div class="va-mode" id="mode-todo" style="display:none;">
+                    <input type="text" id="todo-input" placeholder="Todo title...">
+                    <input type="date" id="todo-date">
+                    <button class="va-send-btn" onclick="VoiceApp.addTodo()">
+                        <i class="fa fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Channel Modal -->
+<div class="va-modal" id="create-modal" style="display:none;">
+    <div class="va-modal-box">
+        <h3>Create Channel</h3>
+        <input type="text" id="new-name" placeholder="Channel Name">
+        <input type="text" id="new-emoji" placeholder="Emoji (optional)" maxlength="4">
+        <textarea id="new-desc" placeholder="Description (optional)"></textarea>
+        <label><input type="checkbox" id="new-private"> Private</label>
+        <div class="va-modal-actions">
+            <button onclick="VoiceApp.hideCreateChannel()">Cancel</button>
+            <button class="primary" onclick="VoiceApp.createChannel()">Create</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    var VoiceApp = {
+        channel: null,
+        recorder: null,
+        chunks: [],
+        startTime: null,
+        timer: null,
+
+        init: function () {
+            this.loadChannels();
+        },
+
+        loadChannels: function () {
+            var self = this;
+            frappe.call({
+                method: 'voice_note.voice_channel.api.voice.get_channels',
+                callback: function (r) {
+                    var list = document.getElementById('channel-list');
+                    list.innerHTML = '';
+                    var channels = r.message || [];
+                    if (channels.length === 0) {
+                        list.innerHTML = '<div class="va-empty-text">No channels</div>';
+                        return;
+                    }
+                    channels.forEach(function (ch) {
+                        var div = document.createElement('div');
+                        div.className = 'va-channel-item' + (self.channel === ch.name ? ' active' : '');
+                        div.innerHTML = '<span class="va-ch-emoji">' + (ch.emoji || '#') + '</span>' +
+                            '<span class="va-ch-name">' + ch.channel_name + '</span>';
+                        div.onclick = function () { self.selectChannel(ch.name, ch.channel_name, ch.emoji); };
+                        list.appendChild(div);
+                    });
+                }
+            });
+        },
+
+        selectChannel: function (name, title, emoji) {
+            this.channel = name;
+            document.getElementById('channel-title').textContent = title;
+            document.getElementById('channel-icon').textContent = emoji || '#';
+            document.getElementById('input-area').style.display = 'block';
+            document.querySelectorAll('.va-channel-item').forEach(function (el) {
+                el.classList.remove('active');
+            });
+            event.target.closest('.va-channel-item').classList.add('active');
+            this.loadTimeline();
+        },
+
+        loadTimeline: function () {
+            var self = this;
+            if (!this.channel) return;
+            frappe.call({
+                method: 'voice_note.voice_channel.api.voice.get_timeline',
+                args: { channel: this.channel },
+                callback: function (r) {
+                    var timeline = document.getElementById('timeline');
+                    var items = r.message || [];
+                    if (items.length === 0) {
+                        timeline.innerHTML = '<div class="va-empty"><i class="fa fa-comments fa-3x"></i><p>No messages yet</p></div>';
+                        return;
+                    }
+                    timeline.innerHTML = '';
+                    items.reverse().forEach(function (item) {
+                        timeline.appendChild(self.createItem(item));
+                    });
+                    timeline.scrollTop = timeline.scrollHeight;
+                }
+            });
+        },
+
+        createItem: function (item) {
+            var div = document.createElement('div');
+            div.className = 'va-item va-item-' + item.item_type.toLowerCase().replace(' ', '-');
+
+            var icon = item.item_type === 'Voice Note' ? 'microphone' :
+                item.item_type === 'Text Note' ? 'file-text-o' : 'check-square-o';
+
+            var content = '';
+            if (item.item_type === 'Voice Note') {
+                content = '<audio controls src="' + item.voice_file + '"></audio>';
+            } else if (item.item_type === 'Text Note') {
+                content = '<div class="va-text">' + (item.content || '') + '</div>';
+            } else {
+                var checked = item.is_completed ? 'checked' : '';
+                content = '<label class="va-todo"><input type="checkbox" ' + checked +
+                    ' onchange="VoiceApp.toggleTodo(\'' + item.name + '\')"> ' +
+                    item.todo_title + '</label>';
+            }
+
+            div.innerHTML = '<div class="va-item-header">' +
+                '<i class="fa fa-' + icon + '"></i> ' +
+                '<strong>' + item.owner_name + '</strong> ' +
+                '<span class="va-time">' + frappe.datetime.prettyDate(item.creation) + '</span>' +
+                '</div>' +
+                '<div class="va-item-body">' + content + '</div>';
+            return div;
+        },
+
+        setMode: function (mode) {
+            document.querySelectorAll('.va-tab').forEach(function (t) { t.classList.remove('active'); });
+            document.querySelector('.va-tab[data-mode="' + mode + '"]').classList.add('active');
+            document.querySelectorAll('.va-mode').forEach(function (m) { m.style.display = 'none'; });
+            document.getElementById('mode-' + mode).style.display = 'flex';
+        },
+
+        toggleRecording: function () {
+            if (this.recorder && this.recorder.state === 'recording') {
+                this.stopRecording();
+            } else {
+                this.startRecording();
+            }
+        },
+
+        startRecording: function () {
+            var self = this;
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+                self.chunks = [];
+                self.recorder = new MediaRecorder(stream);
+                self.recorder.ondataavailable = function (e) {
+                    if (e.data.size > 0) self.chunks.push(e.data);
+                };
+                self.recorder.onstop = function () {
+                    stream.getTracks().forEach(function (t) { t.stop(); });
+                    self.uploadRecording();
+                };
+                self.recorder.start();
+                self.startTime = Date.now();
+                self.startTimer();
+                document.getElementById('record-btn').classList.add('recording');
+                document.getElementById('recording-info').style.display = 'flex';
+            }).catch(function (err) {
+                frappe.msgprint('Microphone access denied');
+            });
+        },
+
+        stopRecording: function () {
+            if (this.recorder) {
+                this.recorder.stop();
+            }
+            this.stopTimer();
+            document.getElementById('record-btn').classList.remove('recording');
+            document.getElementById('recording-info').style.display = 'none';
+        },
+
+        startTimer: function () {
+            var self = this;
+            this.timer = setInterval(function () {
+                var sec = Math.floor((Date.now() - self.startTime) / 1000);
+                var m = Math.floor(sec / 60);
+                var s = sec % 60;
+                document.getElementById('rec-time').textContent =
+                    (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+            }, 100);
+        },
+
+        stopTimer: function () {
+            if (this.timer) {
+                clearInterval(this.timer);
+                this.timer = null;
+            }
+            document.getElementById('rec-time').textContent = '00:00';
+        },
+
+        uploadRecording: function () {
+            var self = this;
+            if (this.chunks.length === 0) return;
+
+            var blob = new Blob(this.chunks, { type: 'audio/webm' });
+            var duration = (Date.now() - this.startTime) / 1000;
+            var formData = new FormData();
+            formData.append('file', blob, 'voice_' + Date.now() + '.webm');
+            formData.append('is_private', '1');
+
+            fetch('/api/method/upload_file', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token }
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.message && data.message.file_url) {
+                        frappe.call({
+                            method: 'voice_note.voice_channel.api.voice.create_voice_note',
+                            args: { channel: self.channel, voice_file: data.message.file_url, voice_duration: duration },
+                            callback: function () {
+                                frappe.show_alert({ message: 'Voice note sent!', indicator: 'green' });
+                                self.loadTimeline();
+                            }
+                        });
+                    }
+                });
+        },
+
+        sendText: function () {
+            var self = this;
+            var text = document.getElementById('text-input').value.trim();
+            if (!text || !this.channel) return;
+
+            frappe.call({
+                method: 'voice_note.voice_channel.api.voice.create_text_note',
+                args: { channel: this.channel, content: text },
+                callback: function () {
+                    document.getElementById('text-input').value = '';
+                    frappe.show_alert({ message: 'Sent!', indicator: 'green' });
+                    self.loadTimeline();
+                }
+            });
+        },
+
+        addTodo: function () {
+            var self = this;
+            var title = document.getElementById('todo-input').value.trim();
+            if (!title || !this.channel) return;
+            var due = document.getElementById('todo-date').value;
+
+            frappe.call({
+                method: 'voice_note.voice_channel.api.voice.create_todo',
+                args: { channel: this.channel, todo_title: title, due_date: due || null },
+                callback: function () {
+                    document.getElementById('todo-input').value = '';
+                    document.getElementById('todo-date').value = '';
+                    frappe.show_alert({ message: 'Todo added!', indicator: 'green' });
+                    self.loadTimeline();
+                }
+            });
+        },
+
+        toggleTodo: function (name) {
+            var self = this;
+            frappe.call({
+                method: 'voice_note.voice_channel.api.voice.toggle_todo',
+                args: { item_name: name },
+                callback: function () { self.loadTimeline(); }
+            });
+        },
+
+        showCreateChannel: function () {
+            document.getElementById('create-modal').style.display = 'flex';
+        },
+
+        hideCreateChannel: function () {
+            document.getElementById('create-modal').style.display = 'none';
+        },
+
+        createChannel: function () {
+            var self = this;
+            var name = document.getElementById('new-name').value.trim();
+            if (!name) { frappe.msgprint('Name required'); return; }
+
+            frappe.db.insert({
+                doctype: 'Voice Channel',
+                channel_name: name,
+                emoji: document.getElementById('new-emoji').value || '#',
+                description: document.getElementById('new-desc').value,
+                is_private: document.getElementById('new-private').checked,
+                members: [{ user: frappe.session.user, is_admin: 1 }]
+            }).then(function () {
+                self.hideCreateChannel();
+                document.getElementById('new-name').value = '';
+                document.getElementById('new-emoji').value = '';
+                document.getElementById('new-desc').value = '';
+                document.getElementById('new-private').checked = false;
+                frappe.show_alert({ message: 'Channel created!', indicator: 'green' });
+                self.loadChannels();
+            });
+        }
+    };
+
+    frappe.ready(function () {
+        VoiceApp.init();
+    });
+</script>
+{% endblock %}
