@@ -19,11 +19,10 @@ function VoiceChannelAppClass(page) {
     self.recordingTimer = null;
     self.emojiTargetItem = null;
 
-    // Common emojis for status picker
+    // Status labels for picker
     self.emojis = [
-        '👍', '❤️', '😊', '🎉', '🔥', '✅', '⭐', '💡',
-        '🚀', '💪', '👏', '🙌', '💯', '🎯', '📌', '⚡',
-        '🔔', '📢', '💬', '📝', '🎤', '🎵', '🎧', '📎'
+        '+1', 'OK', 'Yes', 'No', 'Done', 'WIP', 'Help', 'Urgent',
+        'Review', 'Approved', 'Blocked', 'Question', 'Idea', 'Bug', 'Feature', 'Note'
     ];
 
     self.init();
@@ -42,7 +41,7 @@ VoiceChannelAppClass.prototype.setupLayout = function () {
     var html = '<div class="voice-channel-page">' +
         '<aside class="vc-sidebar">' +
         '<div class="vc-sidebar-header">' +
-        '<h3>📢 Channels</h3>' +
+        '<h3><i class="fa fa-bullhorn"></i> Channels</h3>' +
         '<button class="vc-btn vc-btn-icon" id="create-channel-btn" title="Create Channel">' +
         '<i class="fa fa-plus"></i>' +
         '</button>' +
@@ -52,7 +51,7 @@ VoiceChannelAppClass.prototype.setupLayout = function () {
         '<main class="vc-main">' +
         '<header class="vc-channel-header" id="channel-header">' +
         '<div class="vc-channel-info">' +
-        '<span class="vc-channel-emoji">📢</span>' +
+        '<span class="vc-channel-emoji"><i class="fa fa-bullhorn"></i></span>' +
         '<h2 class="vc-channel-name">Select a Channel</h2>' +
         '</div>' +
         '<div class="vc-channel-actions">' +
@@ -63,7 +62,7 @@ VoiceChannelAppClass.prototype.setupLayout = function () {
         '</header>' +
         '<div class="vc-timeline" id="timeline">' +
         '<div class="vc-empty-state" id="empty-state">' +
-        '<div class="vc-empty-icon">💬</div>' +
+        '<div class="vc-empty-icon"><i class="fa fa-comments fa-3x"></i></div>' +
         '<h3>No messages yet</h3>' +
         '<p>Start a conversation by sending a voice note, text, or creating a todo.</p>' +
         '</div>' +
@@ -130,7 +129,7 @@ VoiceChannelAppClass.prototype.setupLayout = function () {
         '</div>' +
         '<div class="vc-form-group">' +
         '<label>Emoji</label>' +
-        '<input type="text" id="new-channel-emoji" class="vc-input" value="📢" maxlength="2">' +
+        '<input type="text" id="new-channel-emoji" class="vc-input" value="#" maxlength="4">' +
         '</div>' +
         '<div class="vc-form-group">' +
         '<label>Description</label>' +
@@ -211,7 +210,7 @@ VoiceChannelAppClass.prototype.renderChannelList = function (channels) {
         var privateIcon = channel.is_private ? '<i class="fa fa-lock vc-private-icon"></i>' : '';
         var $item = $(
             '<div class="vc-channel-item ' + (isActive ? 'active' : '') + '" data-channel="' + channel.name + '">' +
-            '<span class="vc-channel-item-emoji">' + (channel.emoji || '📢') + '</span>' +
+            '<span class="vc-channel-item-emoji">' + (channel.emoji || '#') + '</span>' +
             '<span class="vc-channel-item-name">' + channel.channel_name + '</span>' +
             privateIcon +
             '</div>'
@@ -230,7 +229,7 @@ VoiceChannelAppClass.prototype.selectChannel = function (channelName) {
 
     // Load channel info
     frappe.db.get_doc('Voice Channel', channelName).then(function (doc) {
-        $('#channel-header .vc-channel-emoji').text(doc.emoji || '📢');
+        $('#channel-header .vc-channel-emoji').text(doc.emoji || '#');
         $('#channel-header .vc-channel-name').text(doc.channel_name);
 
         // Show input area
@@ -602,7 +601,7 @@ VoiceChannelAppClass.prototype.createChannel = function () {
     frappe.db.insert({
         doctype: 'Voice Channel',
         channel_name: name,
-        emoji: emoji || '📢',
+        emoji: emoji || '#',
         description: description,
         is_private: isPrivate,
         members: [{
@@ -612,7 +611,7 @@ VoiceChannelAppClass.prototype.createChannel = function () {
     }).then(function (doc) {
         $('#create-channel-modal').hide();
         $('#new-channel-name').val('');
-        $('#new-channel-emoji').val('📢');
+        $('#new-channel-emoji').val('#');
         $('#new-channel-description').val('');
         $('#new-channel-private').prop('checked', false);
 
