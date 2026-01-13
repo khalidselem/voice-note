@@ -3,7 +3,7 @@ name = "voice_note"
 version = "1.0.0"
 description = "Voice Channel - Team communication with voice notes, text notes, and todos"
 authors = [
-    {name = "Voice Note Team", email = "info@example.com"}
+    {name = "ITQAN LLC", email = "info@itqan-kw.net"}
 ]
 requires-python = ">=3.10"
 dependencies = ["frappe"]

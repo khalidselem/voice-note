@@ -1,8 +1,8 @@
 app_name = "voice_note"
 app_title = "Voice Note"
-app_publisher = "Voice Note Team"
+app_publisher = "ITQAN LLC"
 app_description = "Voice Channel - Team communication with voice notes, text notes, and todos"
-app_email = "info@example.com"
+app_email = "info@itqan-kw.net"
 app_license = "MIT"
 app_version = "1.0.0"
 

@@ -1,0 +1,75 @@
+{
+    "charts": [],
+    "content": "[{\"id\":\"shortcut-0\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Voice Channels\",\"col\":3}},{\"id\":\"shortcut-1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Voice Channel List\",\"col\":3}},{\"id\":\"shortcut-2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Timeline Items\",\"col\":3}},{\"id\":\"spacer-1\",\"type\":\"spacer\",\"data\":{\"col\":12}}]",
+    "creation": "2026-01-13 10:00:00.000000",
+    "doctype": "Workspace",
+    "for_user": "",
+    "hide_custom": 0,
+    "icon": "microphone",
+    "idx": 0,
+    "is_hidden": 0,
+    "label": "Voice Channel",
+    "links": [
+        {
+            "hidden": 0,
+            "is_query_report": 0,
+            "label": "Voice Channels",
+            "link_count": 0,
+            "link_to": "Voice Channel",
+            "link_type": "DocType",
+            "onboard": 1,
+            "type": "Link"
+        },
+        {
+            "hidden": 0,
+            "is_query_report": 0,
+            "label": "Timeline Items",
+            "link_count": 0,
+            "link_to": "Channel Timeline Item",
+            "link_type": "DocType",
+            "onboard": 0,
+            "type": "Link"
+        }
+    ],
+    "modified": "2026-01-13 10:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Voice Channel",
+    "name": "Voice Channel",
+    "number_cards": [],
+    "owner": "Administrator",
+    "parent_page": "",
+    "public": 1,
+    "restrict_to_domain": "",
+    "roles": [],
+    "sequence_id": 1,
+    "shortcuts": [
+        {
+            "color": "Purple",
+            "doc_view": "",
+            "label": "Voice Channels",
+            "link_to": "voice-channel-ui",
+            "restrict_to_domain": "",
+            "stats_filter": "",
+            "type": "Page"
+        },
+        {
+            "color": "Blue",
+            "doc_view": "List",
+            "label": "Voice Channel List",
+            "link_to": "Voice Channel",
+            "restrict_to_domain": "",
+            "stats_filter": "",
+            "type": "DocType"
+        },
+        {
+            "color": "Green",
+            "doc_view": "List",
+            "label": "Timeline Items",
+            "link_to": "Channel Timeline Item",
+            "restrict_to_domain": "",
+            "stats_filter": "",
+            "type": "DocType"
+        }
+    ],
+    "title": "Voice Channel"
+}

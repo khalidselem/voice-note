@@ -121,4 +121,6 @@ MIT
 
 ## Author
 
-Voice Note Team
+**ITQAN LLC**  
+📧 info@itqan-kw.net  
+🌐 [itqan-kw.com](https://itqan-kw.com)
