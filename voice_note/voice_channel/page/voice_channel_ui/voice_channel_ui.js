@@ -6,646 +6,665 @@ frappe.pages['voice-channel-ui'].on_page_load = function (wrapper) {
     });
 
     // Initialize the Voice Channel App
-    new VoiceChannelApp(page);
+    window.VoiceChannelApp = new VoiceChannelAppClass(page);
 };
 
-class VoiceChannelApp {
-    constructor(page) {
-        this.page = page;
-        this.currentChannel = null;
-        this.mediaRecorder = null;
-        this.audioChunks = [];
-        this.recordingStartTime = null;
-        this.recordingTimer = null;
+function VoiceChannelAppClass(page) {
+    var self = this;
+    self.page = page;
+    self.currentChannel = null;
+    self.mediaRecorder = null;
+    self.audioChunks = [];
+    self.recordingStartTime = null;
+    self.recordingTimer = null;
+    self.emojiTargetItem = null;
 
-        // Common emojis for status picker
-        this.emojis = [
-            '👍', '❤️', '😊', '🎉', '🔥', '✅', '⭐', '💡',
-            '🚀', '💪', '👏', '🙌', '💯', '🎯', '📌', '⚡',
-            '🔔', '📢', '💬', '📝', '🎤', '🎵', '🎧', '📎'
-        ];
+    // Common emojis for status picker
+    self.emojis = [
+        '👍', '❤️', '😊', '🎉', '🔥', '✅', '⭐', '💡',
+        '🚀', '💪', '👏', '🙌', '💯', '🎯', '📌', '⚡',
+        '🔔', '📢', '💬', '📝', '🎤', '🎵', '🎧', '📎'
+    ];
 
-        this.init();
-    }
+    self.init();
+}
 
-    init() {
-        this.setupLayout();
-        this.loadChannels();
-        this.bindEvents();
-        this.setupEmojiPicker();
-    }
+VoiceChannelAppClass.prototype.init = function () {
+    var self = this;
+    self.setupLayout();
+    self.loadChannels();
+    self.bindEvents();
+    self.setupEmojiPicker();
+};
 
-    setupLayout() {
-        $(this.page.body).html(frappe.render_template('voice_channel_ui'));
-    }
+VoiceChannelAppClass.prototype.setupLayout = function () {
+    var self = this;
+    $(self.page.body).html(frappe.render_template('voice_channel_ui'));
+};
 
-    // ========================================
-    // Channel Management
-    // ========================================
+// ========================================
+// Channel Management
+// ========================================
 
-    async loadChannels() {
-        try {
-            const response = await frappe.call({
-                method: 'voice_note.voice_channel.api.voice.get_channels'
-            });
+VoiceChannelAppClass.prototype.loadChannels = function () {
+    var self = this;
 
-            const channels = response.message || [];
-            this.renderChannelList(channels);
+    frappe.call({
+        method: 'voice_note.voice_channel.api.voice.get_channels',
+        callback: function (response) {
+            var channels = response.message || [];
+            self.renderChannelList(channels);
 
             // Select first channel if available
-            if (channels.length > 0 && !this.currentChannel) {
-                this.selectChannel(channels[0].name);
+            if (channels.length > 0 && !self.currentChannel) {
+                self.selectChannel(channels[0].name);
             }
-        } catch (error) {
+        },
+        error: function (error) {
             console.error('Error loading channels:', error);
             frappe.msgprint(__('Error loading channels'));
         }
+    });
+};
+
+VoiceChannelAppClass.prototype.renderChannelList = function (channels) {
+    var self = this;
+    var $list = $('#channel-list');
+    $list.empty();
+
+    if (channels.length === 0) {
+        $list.html(
+            '<div class="vc-no-channels">' +
+            '<p>No channels yet</p>' +
+            '<small>Create a channel to get started</small>' +
+            '</div>'
+        );
+        return;
     }
 
-    renderChannelList(channels) {
-        const $list = $('#channel-list');
-        $list.empty();
+    channels.forEach(function (channel) {
+        var isActive = self.currentChannel === channel.name;
+        var privateIcon = channel.is_private ? '<i class="fa fa-lock vc-private-icon"></i>' : '';
+        var $item = $(
+            '<div class="vc-channel-item ' + (isActive ? 'active' : '') + '" data-channel="' + channel.name + '">' +
+            '<span class="vc-channel-item-emoji">' + (channel.emoji || '📢') + '</span>' +
+            '<span class="vc-channel-item-name">' + channel.channel_name + '</span>' +
+            privateIcon +
+            '</div>'
+        );
+        $list.append($item);
+    });
+};
 
-        if (channels.length === 0) {
-            $list.html(`
-                <div class="vc-no-channels">
-                    <p>No channels yet</p>
-                    <small>Create a channel to get started</small>
-                </div>
-            `);
-            return;
-        }
+VoiceChannelAppClass.prototype.selectChannel = function (channelName) {
+    var self = this;
+    self.currentChannel = channelName;
 
-        channels.forEach(channel => {
-            const isActive = this.currentChannel === channel.name;
-            const $item = $(`
-                <div class="vc-channel-item ${isActive ? 'active' : ''}" data-channel="${channel.name}">
-                    <span class="vc-channel-item-emoji">${channel.emoji || '📢'}</span>
-                    <span class="vc-channel-item-name">${channel.channel_name}</span>
-                    ${channel.is_private ? '<i class="fa fa-lock vc-private-icon"></i>' : ''}
-                </div>
-            `);
-            $list.append($item);
-        });
-    }
+    // Update UI
+    $('.vc-channel-item').removeClass('active');
+    $('.vc-channel-item[data-channel="' + channelName + '"]').addClass('active');
 
-    async selectChannel(channelName) {
-        this.currentChannel = channelName;
+    // Load channel info
+    frappe.db.get_doc('Voice Channel', channelName).then(function (doc) {
+        $('#channel-header .vc-channel-emoji').text(doc.emoji || '📢');
+        $('#channel-header .vc-channel-name').text(doc.channel_name);
 
-        // Update UI
-        $('.vc-channel-item').removeClass('active');
-        $(`.vc-channel-item[data-channel="${channelName}"]`).addClass('active');
+        // Show input area
+        $('#input-area').show();
 
-        // Load channel info
-        try {
-            const doc = await frappe.db.get_doc('Voice Channel', channelName);
-            $('#channel-header .vc-channel-emoji').text(doc.emoji || '📢');
-            $('#channel-header .vc-channel-name').text(doc.channel_name);
+        // Load timeline
+        self.loadTimeline();
+    }).catch(function (error) {
+        console.error('Error loading channel:', error);
+    });
+};
 
-            // Show input area
-            $('#input-area').show();
+// ========================================
+// Timeline Management
+// ========================================
 
-            // Load timeline
-            this.loadTimeline();
-        } catch (error) {
-            console.error('Error loading channel:', error);
-        }
-    }
+VoiceChannelAppClass.prototype.loadTimeline = function () {
+    var self = this;
+    if (!self.currentChannel) return;
 
-    // ========================================
-    // Timeline Management
-    // ========================================
-
-    async loadTimeline() {
-        if (!this.currentChannel) return;
-
-        try {
-            const response = await frappe.call({
-                method: 'voice_note.voice_channel.api.voice.get_timeline',
-                args: { channel: this.currentChannel }
-            });
-
-            const items = response.message || [];
-            this.renderTimeline(items);
-        } catch (error) {
+    frappe.call({
+        method: 'voice_note.voice_channel.api.voice.get_timeline',
+        args: { channel: self.currentChannel },
+        callback: function (response) {
+            var items = response.message || [];
+            self.renderTimeline(items);
+        },
+        error: function (error) {
             console.error('Error loading timeline:', error);
         }
+    });
+};
+
+VoiceChannelAppClass.prototype.renderTimeline = function (items) {
+    var self = this;
+    var $timeline = $('#timeline');
+
+    if (items.length === 0) {
+        $('#empty-state').show();
+        return;
     }
 
-    renderTimeline(items) {
-        const $timeline = $('#timeline');
+    $('#empty-state').hide();
 
-        if (items.length === 0) {
-            $('#empty-state').show();
-            return;
-        }
+    // Clear previous items (keep empty state)
+    $timeline.find('.vc-timeline-item').remove();
 
-        $('#empty-state').hide();
+    // Render items in reverse order (oldest first at top)
+    items.reverse().forEach(function (item) {
+        var $item = self.createTimelineItem(item);
+        $timeline.append($item);
+    });
 
-        // Clear previous items (keep empty state)
-        $timeline.find('.vc-timeline-item').remove();
+    // Scroll to bottom
+    $timeline.scrollTop($timeline[0].scrollHeight);
+};
 
-        // Render items in reverse order (oldest first at top)
-        items.reverse().forEach(item => {
-            const $item = this.createTimelineItem(item);
-            $timeline.append($item);
-        });
+VoiceChannelAppClass.prototype.createTimelineItem = function (item) {
+    var self = this;
+    var timeAgo = frappe.datetime.prettyDate(item.creation);
+    var avatarUrl = item.owner_image || '/assets/frappe/images/default-avatar.png';
 
-        // Scroll to bottom
-        $timeline.scrollTop($timeline[0].scrollHeight);
+    var contentHtml = '';
+    var typeIcon = '';
+    var typeClass = '';
+
+    if (item.item_type === 'Voice Note') {
+        typeIcon = '🎤';
+        typeClass = 'voice-note';
+        contentHtml =
+            '<div class="vc-voice-player">' +
+            '<audio controls src="' + item.voice_file + '"></audio>' +
+            '<span class="vc-voice-duration">' + self.formatDuration(item.voice_duration) + '</span>' +
+            '</div>';
+    } else if (item.item_type === 'Text Note') {
+        typeIcon = '📝';
+        typeClass = 'text-note';
+        contentHtml = '<div class="vc-text-content">' + (item.content || '') + '</div>';
+    } else if (item.item_type === 'Todo') {
+        typeIcon = '✅';
+        typeClass = 'todo';
+        var completedClass = item.is_completed ? 'completed' : '';
+        var checkedAttr = item.is_completed ? 'checked' : '';
+        var assignedHtml = item.assigned_name ? '<span class="vc-todo-assigned">@' + item.assigned_name + '</span>' : '';
+        var dueDateHtml = item.due_date ? '<span class="vc-todo-due">' + frappe.datetime.str_to_user(item.due_date) + '</span>' : '';
+
+        contentHtml =
+            '<div class="vc-todo-content ' + completedClass + '">' +
+            '<label class="vc-todo-checkbox">' +
+            '<input type="checkbox" ' + checkedAttr + ' data-item="' + item.name + '">' +
+            '<span class="vc-todo-title">' + item.todo_title + '</span>' +
+            '</label>' +
+            assignedHtml + dueDateHtml +
+            '</div>';
     }
 
-    createTimelineItem(item) {
-        const timeAgo = frappe.datetime.prettyDate(item.creation);
-        const avatarUrl = item.owner_image || '/assets/frappe/images/default-avatar.png';
+    var statusEmojiHtml = item.status_emoji ? '<span class="vc-item-emoji">' + item.status_emoji + '</span>' : '';
 
-        let contentHtml = '';
-        let typeIcon = '';
-        let typeClass = '';
+    return $(
+        '<div class="vc-timeline-item ' + typeClass + '" data-item="' + item.name + '">' +
+        '<div class="vc-timeline-item-avatar">' +
+        '<img src="' + avatarUrl + '" alt="' + item.owner_name + '">' +
+        '</div>' +
+        '<div class="vc-timeline-item-content">' +
+        '<div class="vc-timeline-item-header">' +
+        '<span class="vc-item-type-icon">' + typeIcon + '</span>' +
+        '<span class="vc-item-owner">' + item.owner_name + '</span>' +
+        '<span class="vc-item-time">' + timeAgo + '</span>' +
+        statusEmojiHtml +
+        '<button class="vc-btn vc-btn-icon vc-emoji-btn" data-item="' + item.name + '" title="Add Emoji">' +
+        '<i class="fa fa-smile-o"></i>' +
+        '</button>' +
+        '<button class="vc-btn vc-btn-icon vc-delete-btn" data-item="' + item.name + '" title="Delete">' +
+        '<i class="fa fa-trash-o"></i>' +
+        '</button>' +
+        '</div>' +
+        '<div class="vc-timeline-item-body">' + contentHtml + '</div>' +
+        '</div>' +
+        '</div>'
+    );
+};
 
-        switch (item.item_type) {
-            case 'Voice Note':
-                typeIcon = '🎤';
-                typeClass = 'voice-note';
-                contentHtml = `
-                    <div class="vc-voice-player">
-                        <audio controls src="${item.voice_file}"></audio>
-                        <span class="vc-voice-duration">${this.formatDuration(item.voice_duration)}</span>
-                    </div>
-                `;
-                break;
+VoiceChannelAppClass.prototype.formatDuration = function (seconds) {
+    if (!seconds) return '0:00';
+    var mins = Math.floor(seconds / 60);
+    var secs = Math.floor(seconds % 60);
+    return mins + ':' + (secs < 10 ? '0' : '') + secs;
+};
 
-            case 'Text Note':
-                typeIcon = '📝';
-                typeClass = 'text-note';
-                contentHtml = `<div class="vc-text-content">${item.content || ''}</div>`;
-                break;
+// ========================================
+// Voice Recording
+// ========================================
 
-            case 'Todo':
-                typeIcon = '✅';
-                typeClass = 'todo';
-                contentHtml = `
-                    <div class="vc-todo-content ${item.is_completed ? 'completed' : ''}">
-                        <label class="vc-todo-checkbox">
-                            <input type="checkbox" ${item.is_completed ? 'checked' : ''} data-item="${item.name}">
-                            <span class="vc-todo-title">${item.todo_title}</span>
-                        </label>
-                        ${item.assigned_name ? `<span class="vc-todo-assigned">@${item.assigned_name}</span>` : ''}
-                        ${item.due_date ? `<span class="vc-todo-due">${frappe.datetime.str_to_user(item.due_date)}</span>` : ''}
-                    </div>
-                `;
-                break;
-        }
+VoiceChannelAppClass.prototype.startRecording = function () {
+    var self = this;
 
-        return $(`
-            <div class="vc-timeline-item ${typeClass}" data-item="${item.name}">
-                <div class="vc-timeline-item-avatar">
-                    <img src="${avatarUrl}" alt="${item.owner_name}">
-                </div>
-                <div class="vc-timeline-item-content">
-                    <div class="vc-timeline-item-header">
-                        <span class="vc-item-type-icon">${typeIcon}</span>
-                        <span class="vc-item-owner">${item.owner_name}</span>
-                        <span class="vc-item-time">${timeAgo}</span>
-                        ${item.status_emoji ? `<span class="vc-item-emoji">${item.status_emoji}</span>` : ''}
-                        <button class="vc-btn vc-btn-icon vc-emoji-btn" data-item="${item.name}" title="Add Emoji">
-                            <i class="fa fa-smile-o"></i>
-                        </button>
-                        <button class="vc-btn vc-btn-icon vc-delete-btn" data-item="${item.name}" title="Delete">
-                            <i class="fa fa-trash-o"></i>
-                        </button>
-                    </div>
-                    <div class="vc-timeline-item-body">
-                        ${contentHtml}
-                    </div>
-                </div>
-            </div>
-        `);
-    }
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(function (stream) {
+            self.audioChunks = [];
+            self.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
 
-    formatDuration(seconds) {
-        if (!seconds) return '0:00';
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    }
-
-    // ========================================
-    // Voice Recording
-    // ========================================
-
-    async startRecording() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-            this.audioChunks = [];
-            this.mediaRecorder = new MediaRecorder(stream, {
-                mimeType: 'audio/webm'
-            });
-
-            this.mediaRecorder.ondataavailable = (e) => {
+            self.mediaRecorder.ondataavailable = function (e) {
                 if (e.data.size > 0) {
-                    this.audioChunks.push(e.data);
+                    self.audioChunks.push(e.data);
                 }
             };
 
-            this.mediaRecorder.onstop = () => {
-                stream.getTracks().forEach(track => track.stop());
-                this.uploadRecording();
+            self.mediaRecorder.onstop = function () {
+                stream.getTracks().forEach(function (track) { track.stop(); });
+                self.uploadRecording();
             };
 
-            this.mediaRecorder.start();
-            this.recordingStartTime = Date.now();
-            this.startRecordingTimer();
+            self.mediaRecorder.start();
+            self.recordingStartTime = Date.now();
+            self.startRecordingTimer();
 
             // Update UI
             $('#record-btn').hide();
             $('#recording-indicator').show();
-
-        } catch (error) {
+        })
+        .catch(function (error) {
             console.error('Error starting recording:', error);
             frappe.msgprint(__('Could not access microphone. Please ensure microphone permissions are granted.'));
+        });
+};
+
+VoiceChannelAppClass.prototype.stopRecording = function () {
+    var self = this;
+    if (self.mediaRecorder && self.mediaRecorder.state !== 'inactive') {
+        self.mediaRecorder.stop();
+    }
+
+    self.stopRecordingTimer();
+
+    // Update UI
+    $('#record-btn').show();
+    $('#recording-indicator').hide();
+};
+
+VoiceChannelAppClass.prototype.startRecordingTimer = function () {
+    var self = this;
+    self.recordingTimer = setInterval(function () {
+        var elapsed = Date.now() - self.recordingStartTime;
+        var seconds = Math.floor(elapsed / 1000);
+        var mins = Math.floor(seconds / 60);
+        var secs = seconds % 60;
+        $('#recording-time').text((mins < 10 ? '0' : '') + mins + ':' + (secs < 10 ? '0' : '') + secs);
+    }, 100);
+};
+
+VoiceChannelAppClass.prototype.stopRecordingTimer = function () {
+    var self = this;
+    if (self.recordingTimer) {
+        clearInterval(self.recordingTimer);
+        self.recordingTimer = null;
+    }
+    $('#recording-time').text('00:00');
+};
+
+VoiceChannelAppClass.prototype.uploadRecording = function () {
+    var self = this;
+    if (self.audioChunks.length === 0) return;
+
+    var blob = new Blob(self.audioChunks, { type: 'audio/webm' });
+    var duration = (Date.now() - self.recordingStartTime) / 1000;
+
+    // Upload file first
+    var formData = new FormData();
+    formData.append('file', blob, 'voice_' + Date.now() + '.webm');
+    formData.append('is_private', '1');
+    formData.append('doctype', 'Channel Timeline Item');
+
+    fetch('/api/method/upload_file', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Frappe-CSRF-Token': frappe.csrf_token
         }
-    }
-
-    stopRecording() {
-        if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-            this.mediaRecorder.stop();
-        }
-
-        this.stopRecordingTimer();
-
-        // Update UI
-        $('#record-btn').show();
-        $('#recording-indicator').hide();
-    }
-
-    startRecordingTimer() {
-        this.recordingTimer = setInterval(() => {
-            const elapsed = Date.now() - this.recordingStartTime;
-            const seconds = Math.floor(elapsed / 1000);
-            const mins = Math.floor(seconds / 60);
-            const secs = seconds % 60;
-            $('#recording-time').text(`${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
-        }, 100);
-    }
-
-    stopRecordingTimer() {
-        if (this.recordingTimer) {
-            clearInterval(this.recordingTimer);
-            this.recordingTimer = null;
-        }
-        $('#recording-time').text('00:00');
-    }
-
-    async uploadRecording() {
-        if (this.audioChunks.length === 0) return;
-
-        const blob = new Blob(this.audioChunks, { type: 'audio/webm' });
-        const duration = (Date.now() - this.recordingStartTime) / 1000;
-
-        try {
-            // Upload file first
-            const formData = new FormData();
-            formData.append('file', blob, `voice_${Date.now()}.webm`);
-            formData.append('is_private', '1');
-            formData.append('doctype', 'Channel Timeline Item');
-
-            const uploadResponse = await fetch('/api/method/upload_file', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Frappe-CSRF-Token': frappe.csrf_token
-                }
-            });
-
-            const uploadResult = await uploadResponse.json();
-
+    })
+        .then(function (response) { return response.json(); })
+        .then(function (uploadResult) {
             if (uploadResult.message && uploadResult.message.file_url) {
                 // Create voice note
-                await frappe.call({
+                frappe.call({
                     method: 'voice_note.voice_channel.api.voice.create_voice_note',
                     args: {
-                        channel: this.currentChannel,
+                        channel: self.currentChannel,
                         voice_file: uploadResult.message.file_url,
                         voice_duration: duration
+                    },
+                    callback: function () {
+                        self.loadTimeline();
+                        frappe.show_alert({ message: __('Voice note sent!'), indicator: 'green' });
                     }
                 });
-
-                // Reload timeline
-                this.loadTimeline();
-                frappe.show_alert({ message: __('Voice note sent!'), indicator: 'green' });
             }
-        } catch (error) {
+        })
+        .catch(function (error) {
             console.error('Error uploading recording:', error);
             frappe.msgprint(__('Error uploading voice note'));
-        }
-    }
+        });
+};
 
-    // ========================================
-    // Text & Todo Input
-    // ========================================
+// ========================================
+// Text & Todo Input
+// ========================================
 
-    async sendTextNote() {
-        const content = $('#text-input').val().trim();
-        if (!content) return;
+VoiceChannelAppClass.prototype.sendTextNote = function () {
+    var self = this;
+    var content = $('#text-input').val().trim();
+    if (!content) return;
 
-        try {
-            await frappe.call({
-                method: 'voice_note.voice_channel.api.voice.create_text_note',
-                args: {
-                    channel: this.currentChannel,
-                    content: content
-                }
-            });
-
+    frappe.call({
+        method: 'voice_note.voice_channel.api.voice.create_text_note',
+        args: {
+            channel: self.currentChannel,
+            content: content
+        },
+        callback: function () {
             $('#text-input').val('');
-            this.loadTimeline();
+            self.loadTimeline();
             frappe.show_alert({ message: __('Message sent!'), indicator: 'green' });
-        } catch (error) {
+        },
+        error: function (error) {
             console.error('Error sending text note:', error);
         }
-    }
+    });
+};
 
-    async addTodo() {
-        const title = $('#todo-title').val().trim();
-        if (!title) return;
+VoiceChannelAppClass.prototype.addTodo = function () {
+    var self = this;
+    var title = $('#todo-title').val().trim();
+    if (!title) return;
 
-        const dueDate = $('#todo-date').val();
+    var dueDate = $('#todo-date').val();
 
-        try {
-            await frappe.call({
-                method: 'voice_note.voice_channel.api.voice.create_todo',
-                args: {
-                    channel: this.currentChannel,
-                    todo_title: title,
-                    due_date: dueDate || null
-                }
-            });
-
+    frappe.call({
+        method: 'voice_note.voice_channel.api.voice.create_todo',
+        args: {
+            channel: self.currentChannel,
+            todo_title: title,
+            due_date: dueDate || null
+        },
+        callback: function () {
             $('#todo-title').val('');
             $('#todo-date').val('');
-            this.loadTimeline();
+            self.loadTimeline();
             frappe.show_alert({ message: __('Todo added!'), indicator: 'green' });
-        } catch (error) {
+        },
+        error: function (error) {
             console.error('Error adding todo:', error);
         }
-    }
+    });
+};
 
-    async toggleTodo(itemName) {
-        try {
-            await frappe.call({
-                method: 'voice_note.voice_channel.api.voice.toggle_todo',
-                args: { item_name: itemName }
-            });
+VoiceChannelAppClass.prototype.toggleTodo = function (itemName) {
+    var self = this;
 
-            this.loadTimeline();
-        } catch (error) {
+    frappe.call({
+        method: 'voice_note.voice_channel.api.voice.toggle_todo',
+        args: { item_name: itemName },
+        callback: function () {
+            self.loadTimeline();
+        },
+        error: function (error) {
             console.error('Error toggling todo:', error);
         }
-    }
+    });
+};
 
-    // ========================================
-    // Emoji Status
-    // ========================================
+// ========================================
+// Emoji Status
+// ========================================
 
-    setupEmojiPicker() {
-        const $grid = $('#emoji-grid');
-        this.emojis.forEach(emoji => {
-            $grid.append(`<span class="vc-emoji-option">${emoji}</span>`);
-        });
-    }
+VoiceChannelAppClass.prototype.setupEmojiPicker = function () {
+    var self = this;
+    var $grid = $('#emoji-grid');
+    self.emojis.forEach(function (emoji) {
+        $grid.append('<span class="vc-emoji-option">' + emoji + '</span>');
+    });
+};
 
-    showEmojiPicker(itemName) {
-        this.emojiTargetItem = itemName;
-        $('#emoji-modal').show();
-    }
+VoiceChannelAppClass.prototype.showEmojiPicker = function (itemName) {
+    var self = this;
+    self.emojiTargetItem = itemName;
+    $('#emoji-modal').show();
+};
 
-    async selectEmoji(emoji) {
-        if (!this.emojiTargetItem) return;
+VoiceChannelAppClass.prototype.selectEmoji = function (emoji) {
+    var self = this;
+    if (!self.emojiTargetItem) return;
 
-        try {
-            await frappe.call({
-                method: 'voice_note.voice_channel.api.voice.update_status_emoji',
-                args: {
-                    item_name: this.emojiTargetItem,
-                    emoji: emoji
-                }
-            });
-
+    frappe.call({
+        method: 'voice_note.voice_channel.api.voice.update_status_emoji',
+        args: {
+            item_name: self.emojiTargetItem,
+            emoji: emoji
+        },
+        callback: function () {
             $('#emoji-modal').hide();
-            this.loadTimeline();
-        } catch (error) {
+            self.loadTimeline();
+        },
+        error: function (error) {
             console.error('Error updating emoji:', error);
         }
+    });
+};
+
+// ========================================
+// Channel Creation
+// ========================================
+
+VoiceChannelAppClass.prototype.showCreateChannelModal = function () {
+    $('#create-channel-modal').show();
+};
+
+VoiceChannelAppClass.prototype.createChannel = function () {
+    var self = this;
+    var name = $('#new-channel-name').val().trim();
+    var emoji = $('#new-channel-emoji').val().trim();
+    var description = $('#new-channel-description').val().trim();
+    var isPrivate = $('#new-channel-private').is(':checked');
+
+    if (!name) {
+        frappe.msgprint(__('Channel name is required'));
+        return;
     }
 
-    // ========================================
-    // Channel Creation
-    // ========================================
+    frappe.db.insert({
+        doctype: 'Voice Channel',
+        channel_name: name,
+        emoji: emoji || '📢',
+        description: description,
+        is_private: isPrivate,
+        members: [{
+            user: frappe.session.user,
+            is_admin: 1
+        }]
+    }).then(function (doc) {
+        $('#create-channel-modal').hide();
+        $('#new-channel-name').val('');
+        $('#new-channel-emoji').val('📢');
+        $('#new-channel-description').val('');
+        $('#new-channel-private').prop('checked', false);
 
-    showCreateChannelModal() {
-        $('#create-channel-modal').show();
-    }
+        self.loadChannels();
+        setTimeout(function () {
+            self.selectChannel(doc.name);
+        }, 500);
 
-    async createChannel() {
-        const name = $('#new-channel-name').val().trim();
-        const emoji = $('#new-channel-emoji').val().trim();
-        const description = $('#new-channel-description').val().trim();
-        const isPrivate = $('#new-channel-private').is(':checked');
+        frappe.show_alert({ message: __('Channel created!'), indicator: 'green' });
+    }).catch(function (error) {
+        console.error('Error creating channel:', error);
+        frappe.msgprint(__('Error creating channel'));
+    });
+};
 
-        if (!name) {
-            frappe.msgprint(__('Channel name is required'));
-            return;
-        }
+// ========================================
+// Delete Item
+// ========================================
 
-        try {
-            const doc = await frappe.db.insert({
-                doctype: 'Voice Channel',
-                channel_name: name,
-                emoji: emoji || '📢',
-                description: description,
-                is_private: isPrivate,
-                members: [{
-                    user: frappe.session.user,
-                    is_admin: 1
-                }]
-            });
+VoiceChannelAppClass.prototype.deleteItem = function (itemName) {
+    var self = this;
 
-            $('#create-channel-modal').hide();
-            $('#new-channel-name').val('');
-            $('#new-channel-emoji').val('📢');
-            $('#new-channel-description').val('');
-            $('#new-channel-private').prop('checked', false);
-
-            await this.loadChannels();
-            this.selectChannel(doc.name);
-
-            frappe.show_alert({ message: __('Channel created!'), indicator: 'green' });
-        } catch (error) {
-            console.error('Error creating channel:', error);
-            frappe.msgprint(__('Error creating channel'));
-        }
-    }
-
-    // ========================================
-    // Delete Item
-    // ========================================
-
-    async deleteItem(itemName) {
-        frappe.confirm(
-            __('Are you sure you want to delete this item?'),
-            async () => {
-                try {
-                    await frappe.call({
-                        method: 'voice_note.voice_channel.api.voice.delete_timeline_item',
-                        args: { item_name: itemName }
-                    });
-
-                    this.loadTimeline();
+    frappe.confirm(
+        __('Are you sure you want to delete this item?'),
+        function () {
+            frappe.call({
+                method: 'voice_note.voice_channel.api.voice.delete_timeline_item',
+                args: { item_name: itemName },
+                callback: function () {
+                    self.loadTimeline();
                     frappe.show_alert({ message: __('Item deleted'), indicator: 'green' });
-                } catch (error) {
+                },
+                error: function (error) {
                     console.error('Error deleting item:', error);
                 }
-            }
-        );
-    }
-
-    // ========================================
-    // Members Modal
-    // ========================================
-
-    async showMembersModal() {
-        if (!this.currentChannel) return;
-
-        try {
-            const response = await frappe.call({
-                method: 'voice_note.voice_channel.api.voice.get_channel_members',
-                args: { channel: this.currentChannel }
             });
+        }
+    );
+};
 
-            const members = response.message || [];
-            const $list = $('#members-list');
+// ========================================
+// Members Modal
+// ========================================
+
+VoiceChannelAppClass.prototype.showMembersModal = function () {
+    var self = this;
+    if (!self.currentChannel) return;
+
+    frappe.call({
+        method: 'voice_note.voice_channel.api.voice.get_channel_members',
+        args: { channel: self.currentChannel },
+        callback: function (response) {
+            var members = response.message || [];
+            var $list = $('#members-list');
             $list.empty();
 
-            members.forEach(member => {
-                const avatarUrl = member.user_image || '/assets/frappe/images/default-avatar.png';
-                $list.append(`
-                    <div class="vc-member-item">
-                        <img src="${avatarUrl}" class="vc-member-avatar">
-                        <span class="vc-member-name">${member.full_name}</span>
-                        ${member.is_admin ? '<span class="vc-admin-badge">Admin</span>' : ''}
-                    </div>
-                `);
+            members.forEach(function (member) {
+                var avatarUrl = member.user_image || '/assets/frappe/images/default-avatar.png';
+                var adminBadge = member.is_admin ? '<span class="vc-admin-badge">Admin</span>' : '';
+                $list.append(
+                    '<div class="vc-member-item">' +
+                    '<img src="' + avatarUrl + '" class="vc-member-avatar">' +
+                    '<span class="vc-member-name">' + member.full_name + '</span>' +
+                    adminBadge +
+                    '</div>'
+                );
             });
 
             $('#members-modal').show();
-        } catch (error) {
+        },
+        error: function (error) {
             console.error('Error loading members:', error);
         }
-    }
+    });
+};
 
-    // ========================================
-    // Event Bindings
-    // ========================================
+// ========================================
+// Event Bindings
+// ========================================
 
-    bindEvents() {
-        const self = this;
+VoiceChannelAppClass.prototype.bindEvents = function () {
+    var self = this;
 
-        // Channel selection
-        $(document).on('click', '.vc-channel-item', function () {
-            const channelName = $(this).data('channel');
-            self.selectChannel(channelName);
-        });
+    // Channel selection
+    $(document).on('click', '.vc-channel-item', function () {
+        var channelName = $(this).data('channel');
+        self.selectChannel(channelName);
+    });
 
-        // Input mode toggles
-        $('#toggle-voice').on('click', function () {
-            $('.vc-toggle-btn').removeClass('active');
-            $(this).addClass('active');
-            $('#voice-recorder').show();
-            $('#text-input-container').hide();
-            $('#todo-input-container').hide();
-        });
+    // Input mode toggles
+    $('#toggle-voice').on('click', function () {
+        $('.vc-toggle-btn').removeClass('active');
+        $(this).addClass('active');
+        $('#voice-recorder').show();
+        $('#text-input-container').hide();
+        $('#todo-input-container').hide();
+    });
 
-        $('#toggle-text').on('click', function () {
-            $('.vc-toggle-btn').removeClass('active');
-            $(this).addClass('active');
-            $('#voice-recorder').hide();
-            $('#text-input-container').show();
-            $('#todo-input-container').hide();
-        });
+    $('#toggle-text').on('click', function () {
+        $('.vc-toggle-btn').removeClass('active');
+        $(this).addClass('active');
+        $('#voice-recorder').hide();
+        $('#text-input-container').show();
+        $('#todo-input-container').hide();
+    });
 
-        $('#toggle-todo').on('click', function () {
-            $('.vc-toggle-btn').removeClass('active');
-            $(this).addClass('active');
-            $('#voice-recorder').hide();
-            $('#text-input-container').hide();
-            $('#todo-input-container').show();
-        });
+    $('#toggle-todo').on('click', function () {
+        $('.vc-toggle-btn').removeClass('active');
+        $(this).addClass('active');
+        $('#voice-recorder').hide();
+        $('#text-input-container').hide();
+        $('#todo-input-container').show();
+    });
 
-        // Voice recording
-        $('#record-btn').on('click', () => this.startRecording());
-        $('#stop-record-btn').on('click', () => this.stopRecording());
+    // Voice recording
+    $('#record-btn').on('click', function () { self.startRecording(); });
+    $('#stop-record-btn').on('click', function () { self.stopRecording(); });
 
-        // Text note
-        $('#send-text-btn').on('click', () => this.sendTextNote());
-        $('#text-input').on('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.sendTextNote();
-            }
-        });
+    // Text note
+    $('#send-text-btn').on('click', function () { self.sendTextNote(); });
+    $('#text-input').on('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            self.sendTextNote();
+        }
+    });
 
-        // Todo
-        $('#add-todo-btn').on('click', () => this.addTodo());
-        $('#todo-title').on('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                this.addTodo();
-            }
-        });
+    // Todo
+    $('#add-todo-btn').on('click', function () { self.addTodo(); });
+    $('#todo-title').on('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            self.addTodo();
+        }
+    });
 
-        // Todo checkbox
-        $(document).on('change', '.vc-todo-checkbox input', function () {
-            const itemName = $(this).data('item');
-            self.toggleTodo(itemName);
-        });
+    // Todo checkbox
+    $(document).on('change', '.vc-todo-checkbox input', function () {
+        var itemName = $(this).data('item');
+        self.toggleTodo(itemName);
+    });
 
-        // Emoji
-        $(document).on('click', '.vc-emoji-btn', function () {
-            const itemName = $(this).data('item');
-            self.showEmojiPicker(itemName);
-        });
+    // Emoji
+    $(document).on('click', '.vc-emoji-btn', function () {
+        var itemName = $(this).data('item');
+        self.showEmojiPicker(itemName);
+    });
 
-        $(document).on('click', '.vc-emoji-option', function () {
-            const emoji = $(this).text();
-            self.selectEmoji(emoji);
-        });
+    $(document).on('click', '.vc-emoji-option', function () {
+        var emoji = $(this).text();
+        self.selectEmoji(emoji);
+    });
 
-        // Delete item
-        $(document).on('click', '.vc-delete-btn', function () {
-            const itemName = $(this).data('item');
-            self.deleteItem(itemName);
-        });
+    // Delete item
+    $(document).on('click', '.vc-delete-btn', function () {
+        var itemName = $(this).data('item');
+        self.deleteItem(itemName);
+    });
 
-        // Create channel
-        $('#create-channel-btn').on('click', () => this.showCreateChannelModal());
-        $('#submit-create-channel').on('click', () => this.createChannel());
-        $('#cancel-create-channel').on('click', () => $('#create-channel-modal').hide());
+    // Create channel
+    $('#create-channel-btn').on('click', function () { self.showCreateChannelModal(); });
+    $('#submit-create-channel').on('click', function () { self.createChannel(); });
+    $('#cancel-create-channel').on('click', function () { $('#create-channel-modal').hide(); });
 
-        // Members modal
-        $('#channel-members-btn').on('click', () => this.showMembersModal());
+    // Members modal
+    $('#channel-members-btn').on('click', function () { self.showMembersModal(); });
 
-        // Modal close buttons
-        $(document).on('click', '.vc-modal-close', function () {
-            $(this).closest('.vc-modal').hide();
-        });
+    // Modal close buttons
+    $(document).on('click', '.vc-modal-close', function () {
+        $(this).closest('.vc-modal').hide();
+    });
 
-        // Close modal on outside click
-        $(document).on('click', '.vc-modal', function (e) {
-            if (e.target === this) {
-                $(this).hide();
-            }
-        });
-    }
-}
+    // Close modal on outside click
+    $(document).on('click', '.vc-modal', function (e) {
+        if (e.target === this) {
+            $(this).hide();
+        }
+    });
+};
