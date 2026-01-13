@@ -1,0 +1,167 @@
+{
+    "actions": [],
+    "creation": "2026-01-13 10:00:00.000000",
+    "doctype": "DocType",
+    "editable_grid": 1,
+    "engine": "InnoDB",
+    "field_order": [
+        "channel",
+        "item_type",
+        "status_emoji",
+        "column_break_1",
+        "owner",
+        "creation",
+        "section_break_content",
+        "content",
+        "section_break_voice",
+        "voice_file",
+        "voice_duration",
+        "section_break_todo",
+        "todo_title",
+        "assigned_user",
+        "column_break_todo",
+        "due_date",
+        "is_completed"
+    ],
+    "fields": [
+        {
+            "fieldname": "channel",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Channel",
+            "options": "Voice Channel",
+            "reqd": 1
+        },
+        {
+            "fieldname": "item_type",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Item Type",
+            "options": "Voice Note\nText Note\nTodo",
+            "reqd": 1
+        },
+        {
+            "fieldname": "status_emoji",
+            "fieldtype": "Data",
+            "label": "Status Emoji"
+        },
+        {
+            "fieldname": "column_break_1",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "owner",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "label": "Created By",
+            "options": "User",
+            "read_only": 1
+        },
+        {
+            "fieldname": "creation",
+            "fieldtype": "Datetime",
+            "in_list_view": 1,
+            "label": "Created At",
+            "read_only": 1
+        },
+        {
+            "depends_on": "eval:doc.item_type=='Text Note'",
+            "fieldname": "section_break_content",
+            "fieldtype": "Section Break",
+            "label": "Content"
+        },
+        {
+            "fieldname": "content",
+            "fieldtype": "Text Editor",
+            "label": "Content"
+        },
+        {
+            "depends_on": "eval:doc.item_type=='Voice Note'",
+            "fieldname": "section_break_voice",
+            "fieldtype": "Section Break",
+            "label": "Voice Note"
+        },
+        {
+            "fieldname": "voice_file",
+            "fieldtype": "Attach",
+            "label": "Voice File"
+        },
+        {
+            "fieldname": "voice_duration",
+            "fieldtype": "Float",
+            "label": "Voice Duration (seconds)",
+            "precision": "1"
+        },
+        {
+            "depends_on": "eval:doc.item_type=='Todo'",
+            "fieldname": "section_break_todo",
+            "fieldtype": "Section Break",
+            "label": "Todo"
+        },
+        {
+            "fieldname": "todo_title",
+            "fieldtype": "Data",
+            "label": "Todo Title"
+        },
+        {
+            "fieldname": "assigned_user",
+            "fieldtype": "Link",
+            "label": "Assigned To",
+            "options": "User"
+        },
+        {
+            "fieldname": "column_break_todo",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "due_date",
+            "fieldtype": "Date",
+            "label": "Due Date"
+        },
+        {
+            "default": "0",
+            "fieldname": "is_completed",
+            "fieldtype": "Check",
+            "label": "Completed"
+        }
+    ],
+    "index_web_pages_for_search": 0,
+    "links": [],
+    "modified": "2026-01-13 10:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Voice Channel",
+    "name": "Channel Timeline Item",
+    "naming_rule": "Expression",
+    "autoname": "TL-.#####",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        },
+        {
+            "create": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "All",
+            "share": 1,
+            "write": 1
+        }
+    ],
+    "sort_field": "creation",
+    "sort_order": "DESC",
+    "track_changes": 1
+}

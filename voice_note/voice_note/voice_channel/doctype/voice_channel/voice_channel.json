@@ -1,0 +1,105 @@
+{
+    "actions": [],
+    "allow_rename": 1,
+    "autoname": "field:channel_name",
+    "creation": "2026-01-13 10:00:00.000000",
+    "doctype": "DocType",
+    "editable_grid": 1,
+    "engine": "InnoDB",
+    "field_order": [
+        "channel_name",
+        "emoji",
+        "column_break_1",
+        "is_private",
+        "section_break_2",
+        "description",
+        "section_break_3",
+        "members"
+    ],
+    "fields": [
+        {
+            "fieldname": "channel_name",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Channel Name",
+            "reqd": 1,
+            "unique": 1
+        },
+        {
+            "default": "📢",
+            "fieldname": "emoji",
+            "fieldtype": "Data",
+            "label": "Emoji / Icon"
+        },
+        {
+            "fieldname": "column_break_1",
+            "fieldtype": "Column Break"
+        },
+        {
+            "default": "0",
+            "fieldname": "is_private",
+            "fieldtype": "Check",
+            "label": "Is Private"
+        },
+        {
+            "fieldname": "section_break_2",
+            "fieldtype": "Section Break"
+        },
+        {
+            "fieldname": "description",
+            "fieldtype": "Small Text",
+            "label": "Description"
+        },
+        {
+            "fieldname": "section_break_3",
+            "fieldtype": "Section Break",
+            "label": "Members"
+        },
+        {
+            "fieldname": "members",
+            "fieldtype": "Table",
+            "label": "Members",
+            "options": "Channel Member"
+        }
+    ],
+    "index_web_pages_for_search": 0,
+    "links": [
+        {
+            "link_doctype": "Channel Timeline Item",
+            "link_fieldname": "channel"
+        }
+    ],
+    "modified": "2026-01-13 10:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Voice Channel",
+    "name": "Voice Channel",
+    "naming_rule": "By fieldname",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        },
+        {
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "All",
+            "share": 1
+        }
+    ],
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "track_changes": 1
+}

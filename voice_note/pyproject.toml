@@ -1,0 +1,16 @@
+[project]
+name = "voice_note"
+version = "1.0.0"
+description = "Voice Channel - Team communication with voice notes, text notes, and todos"
+authors = [
+    {name = "Voice Note Team", email = "info@example.com"}
+]
+requires-python = ">=3.10"
+dependencies = ["frappe"]
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.bench]
+app-name = "voice_note"
